@@ -1,31 +1,33 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
+from fastapi import FastAPI, Depends
+import models
+import crud
+import schemas
+from database import SessionLocal, engine
+from sqlalchemy.orm import Session
 from uuid import uuid4
-from typing import Optional
 
 app = FastAPI()
+models.Base.metadata.create_all(bind=engine)
 
-todo_list = []
 
-
-class SingleTodo(BaseModel):
-    title: str
-    completed: bool
-    order: int
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
 @app.get("/")
-def get_all():
-    return todo_list
+def get_all(db: Session = Depends(get_db)):
+    return crud.fetch_all_todos(db)
 
 
-@app.post("/")
-def post_todo(todo_item: SingleTodo):
+@app.post("/", response_model=schemas.SingleTodo)
+def post_todo(todo_item: schemas.SingleTodo, db: Session = Depends(get_db)):
     unique_id = str(uuid4())
     url = "http://127.0.0.1:8000/" + unique_id
-    response_item = todo_item.dict()
-    response_item["id"] = unique_id
-    response_item["url"] = url
-    # TODO: use database instead of array to save the data
-    todo_list.append(response_item)
-    return response_item
+    todo_item.id = unique_id
+    todo_item.url = url
+    return crud.create_todo(db, todo_item)

@@ -11,3 +11,10 @@ class SingleTodo(BaseModel):
 
     class Config:
         orm_mode = True
+
+
+class CompletedStatus(BaseModel):
+    completed: bool
+
+    class Config:
+        orm_mode = True
